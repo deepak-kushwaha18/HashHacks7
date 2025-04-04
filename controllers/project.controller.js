@@ -103,3 +103,22 @@ export const addUserToProject = async (req, res) => {
         return res.status(500).json({ error: err.message });
     }
 };
+
+export const updateFileTree = async (req, res) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const { projectId, fileTree } = req.body;
+
+        const project = await projectService.updateFileTree({ projectId, fileTree });
+
+        return res.status(200).json({ project });
+    } catch (err) {
+        console.error("Error updating file tree:", err);
+        return res.status(500).json({ error: err.message });
+    }
+};
