@@ -56,7 +56,7 @@ io.use(async (socket, next) => {
             return next(new Error('Invalid token'));
         }
     } catch (error) {
-        console.error('Socket middleware error:', error)
+        console.error('Socket middleware error:', error);
         next(new Error('Authentication failed'));
     }
 });
