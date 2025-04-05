@@ -20,3 +20,18 @@ body {
 .message-box::-webkit-scrollbar{
   display: none;
 }
+
+.signup{
+  transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.signup:hover{
+  box-shadow: 4px 1px 25px royalblue;
+}
+
+/* body{
+  background-image: url('https://i.pinimg.com/736x/da/61/0f/da610fc9cbffcc566891e8c51b17e677.jpg'); 
+  z-index: 999;
+} */
+/*       <img src="https://i.pinimg.com/736x/da/61/0f/da610fc9cbffcc566891e8c51b17e677.jpg" alt="" />
+ */
