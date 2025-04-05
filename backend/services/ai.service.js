@@ -1,73 +1,109 @@
-import dotenv from "dotenv";
-dotenv.config();
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai"
+
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
-
 const model = genAI.getGenerativeModel({
-    model: "gemini-pro",
+    model: "gemini-2.0-flash",
     generationConfig: {
+        responseMimeType: "application/json",
         temperature: 0.4,
-        maxOutputTokens: 2048,
-        topP: 0.8,
-        topK: 40
-    }
-});
+    },
+    systemInstruction: `You are an expert in MERN and Development. You have an experience of 10 years in the development. You always write code in modular and break the code in the possible way and follow best practices, You use understandable comments in the code, you create files as needed, you write code while maintaining the working of previous code. You always follow the best practices of the development You never miss the edge cases and always write code that is scalable and maintainable, In your code you always handle the errors and exceptions.
+    
+    Examples: 
 
-function formatResponse(text) {
-    try {
+    <example>
+ 
+    response: {
 
-        return JSON.parse(text);
-    } catch (error) {
+    "text": "this is you fileTree structure of the express server",
+    "fileTree": {
+        "app.js": {
+            file: {
+                contents: "
+                const express = require('express');
 
-        return {
-            text: text.trim(),
-            fileTree: {}
-        };
+                const app = express();
+
+
+                app.get('/', (req, res) => {
+                    res.send('Hello World!');
+                });
+
+
+                app.listen(3000, () => {
+                    console.log('Server is running on port 3000');
+                })
+                "
+            
+        },
+    },
+
+        "package.json": {
+            file: {
+                contents: "
+
+                {
+                    "name": "temp-server",
+                    "version": "1.0.0",
+                    "main": "index.js",
+                    "scripts": {
+                        "test": "echo \"Error: no test specified\" && exit 1"
+                    },
+                    "keywords": [],
+                    "author": "",
+                    "license": "ISC",
+                    "description": "",
+                    "dependencies": {
+                        "express": "^4.21.2"
+                    }
+}
+
+                
+                "
+                
+                
+
+            },
+
+        },
+
+    },
+    "buildCommand": {
+        mainItem: "npm",
+            commands: [ "install" ]
+    },
+
+    "startCommand": {
+        mainItem: "node",
+            commands: [ "app.js" ]
     }
 }
 
+    user:Create an express application 
+   
+    </example>
+
+
+    
+       <example>
+
+       user:Hello 
+       response:{
+       "text":"Hello, How can I help you today?"
+       }
+       
+       </example>
+    
+ IMPORTANT : don't use file name like routes/index.js
+       
+       
+    `
+});
+
 export const generateResult = async (prompt) => {
-    if (!process.env.GOOGLE_AI_KEY) {
-        console.error("❌ AI Service Error: GOOGLE_AI_KEY is not configured");
-        throw new Error("AI service is not properly configured. Please check the server logs.");
-    }
 
-    if (!prompt || typeof prompt !== "string") {
-        console.error("❌ AI Service Error: Invalid prompt:", prompt);
-        throw new Error("Invalid prompt: must be a non-empty string.");
-    }
+    const result = await model.generateContent(prompt);
 
-    try {
-        console.log("🟢 AI Service: Processing prompt:", prompt);
-
-        const response = await model.generateContent(prompt);
-
-        const text = response.response.text();
-
-        if (!text) {
-            console.error("❌ AI Service Error: Empty response from AI model");
-            throw new Error("Empty response from AI model.");
-        }
-
-        console.log("✅ AI Service: Successfully generated response:", text);
-        
-        return formatResponse(text);
-    } catch (error) {
-        console.error("❌ AI Service Error:", error.message || error);
-
-        if (error.message.includes("API key")) {
-            throw new Error("AI service configuration error: Please check your API key and model access.");
-        }
-
-        if (error.message.includes("quota")) {
-            throw new Error("AI service quota exceeded. Please try again later.");
-        }
-
-        if (error.message.includes("rate limit")) {
-            throw new Error("AI service rate limit exceeded. Please try again later.");
-        }
-
-        throw new Error("Unable to process your request at this time. Please try again later.");
-    }
-};
+    return result.response.text()
+}
