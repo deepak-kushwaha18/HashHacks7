@@ -91,105 +91,80 @@ const Project = () => {
     }
 
     function WriteAiMessage(message) {
-        try {
-            // If message is already an object, use it directly
-            const messageObject = typeof message === 'string' ? JSON.parse(message) : message;
-            
-            return (
-                <div className='overflow-auto bg-slate-950 text-white rounded-sm p-2'>
-                    <Markdown
-                        children={messageObject.text}
-                        options={{
-                            overrides: {
-                                code: SyntaxHighlightedCode,
-                            },
-                        }}
-                    />
-                </div>
-            );
-        } catch (error) {
-            console.error('Error parsing AI message:', error);
-            return (
-                <div className='overflow-auto bg-slate-950 text-white rounded-sm p-2'>
-                    <p>Error displaying AI response</p>
-                </div>
-            );
-        }
+
+        const messageObject = JSON.parse(message)
+
+        return (
+            <div
+                className='overflow-auto bg-slate-950 text-white rounded-sm p-2'
+            >
+                <Markdown
+                    children={messageObject.text}
+                    options={{
+                        overrides: {
+                            code: SyntaxHighlightedCode,
+                        },
+                    }}
+                />
+            </div>)
     }
 
     useEffect(() => {
-        // Initialize socket only once
-        const socket = initializeSocket(project._id);
-        
+
+        initializeSocket(project._id)
+
         if (!webContainer) {
             getWebContainer().then(container => {
-                setWebContainer(container);
-                console.log("container started");
-            });
+                setWebContainer(container)
+                console.log("container started")
+            })
         }
 
-        // Create a message handler function
-        const handleMessage = (data) => {
-            console.log('Received message:', data);
+
+        receiveMessage('project-message', data => {
+
+            console.log(data)
             
-            if (data.sender._id === 'ai') {
-                try {
-                    // If message is already an object, use it directly
-                    const message = typeof data.message === 'string' ? JSON.parse(data.message) : data.message;
-                    console.log('Parsed AI message:', message);
+            if (data.sender._id == 'ai') {
 
-                    if (message.fileTree) {
-                        webContainer?.mount(message.fileTree);
-                        setFileTree(message.fileTree);
-                    }
-                    
-                    // Check if this is a duplicate message
-                    const lastMessage = messages[messages.length - 1];
-                    const isDuplicate = lastMessage && 
-                        lastMessage.sender._id === 'ai' && 
-                        lastMessage.message.text === message.text;
-                    
-                    // Only add the message if it's not a duplicate
-                    if (!isDuplicate) {
-                        setMessages(prevMessages => [...prevMessages, {
-                            ...data,
-                            message: message
-                        }]);
-                    }
-                } catch (error) {
-                    console.error('Error handling AI message:', error);
-                    setMessages(prevMessages => [...prevMessages, {
-                        ...data,
-                        message: { text: 'Error processing AI response' }
-                    }]);
+
+                const message = JSON.parse(data.message)
+
+                console.log(message)
+
+                webContainer?.mount(message.fileTree)
+
+                if (message.fileTree) {
+                    setFileTree(message.fileTree || {})
                 }
+                setMessages(prevMessages => [ ...prevMessages, data ]) // Update messages state
             } else {
-                setMessages(prevMessages => [...prevMessages, data]);
+
+
+                setMessages(prevMessages => [ ...prevMessages, data ]) // Update messages state
             }
-        };
+        })
 
-        // Add the message listener
-        socket.on('project-message', handleMessage);
 
-        // Fetch project data
         axios.get(`/projects/get-project/${location.state.project._id}`).then(res => {
-            console.log(res.data.project);
-            setProject(res.data.project);
-            setFileTree(res.data.project.fileTree || {});
-        });
 
-        // Fetch users
+            console.log(res.data.project)
+
+            setProject(res.data.project)
+            setFileTree(res.data.project.fileTree || {})
+        })
+
         axios.get('/users/all').then(res => {
-            setUsers(res.data.users);
-        }).catch(err => {
-            console.log(err);
-        });
 
-        // Cleanup function to remove the listener when component unmounts
-        return () => {
-            socket.off('project-message', handleMessage);
-        };
-    }, [project._id, webContainer]);
+            setUsers(res.data.users)
+
+        }).catch(err => {
+
+            console.log(err)
+
+        })
+
+    }, [])
 
     function saveFileTree(ft) {
         axios.put('/projects/update-file-tree', {
@@ -226,19 +201,16 @@ const Project = () => {
                     <div
                         ref={messageBox}
                         className="message-box p-1 flex-grow flex flex-col gap-1 overflow-auto max-h-full scrollbar-hide">
-                        {messages.map((msg) => (
-    <div 
-        key={`msg-${msg._id || `${msg.sender._id}-${Math.random()}`}`} 
-        className={`${msg.sender._id === 'ai' ? 'max-w-80' : 'max-w-52'} ${msg.sender._id == user._id.toString() && 'ml-auto'}  message flex flex-col p-2 bg-slate-50 w-fit rounded-md`}
-    >
-        <small className='opacity-65 text-xs'>{msg.sender.email}</small>
-        <div className='text-sm'>
-            {msg.sender._id === 'ai' ?
-                WriteAiMessage(msg.message)
-                : <p>{msg.message}</p>}
-        </div>
-    </div>
-))}
+                        {messages.map((msg, index) => (
+                            <div key={index} className={`${msg.sender._id === 'ai' ? 'max-w-80' : 'max-w-52'} ${msg.sender._id == user._id.toString() && 'ml-auto'}  message flex flex-col p-2 bg-slate-50 w-fit rounded-md`}>
+                                <small className='opacity-65 text-xs'>{msg.sender.email}</small>
+                                <div className='text-sm'>
+                                    {msg.sender._id === 'ai' ?
+                                        WriteAiMessage(msg.message)
+                                        : <p>{msg.message}</p>}
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
                     <div className="inputField w-full flex absolute bottom-0">
@@ -264,17 +236,20 @@ const Project = () => {
                     </header>
                     <div className="users flex flex-col gap-2">
 
-                    {project.users && project.users.map(user => (
-    <div 
-        key={`user-${user._id || Math.random()}`} 
-        className="user cursor-pointer hover:bg-slate-200 p-2 flex gap-2 items-center"
-    >
-        <div className='aspect-square rounded-full w-fit h-fit flex items-center justify-center p-5 text-white bg-slate-600'>
-            <i className="ri-user-fill absolute"></i>
-        </div>
-        <h1 className='font-semibold text-lg'>{user.email}</h1>
-    </div>
-))}
+                        {project.users && project.users.map(user => {
+
+
+                            return (
+                                <div className="user cursor-pointer hover:bg-slate-200 p-2 flex gap-2 items-center">
+                                    <div className='aspect-square rounded-full w-fit h-fit flex items-center justify-center p-5 text-white bg-slate-600'>
+                                        <i className="ri-user-fill absolute"></i>
+                                    </div>
+                                    <h1 className='font-semibold text-lg'>{user.email}</h1>
+                                </div>
+                            )
+
+
+                        })}
                     </div>
                 </div>
             </section>
@@ -283,18 +258,21 @@ const Project = () => {
 
                 <div className="explorer h-full max-w-64 min-w-52 bg-slate-200">
                     <div className="file-tree w-full">
-                    {Object.keys(fileTree).map((file, index) => (
-    <button
-        key={`file-${file}`}
-        onClick={() => {
-            setCurrentFile(file)
-            setOpenFiles([...new Set([...openFiles, file])])
-        }}
-        className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-300 w-full"
-    >
-        <p className='font-semibold text-lg'>{file}</p>
-    </button>
-))}
+                        {
+                            Object.keys(fileTree).map((file, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => {
+                                        setCurrentFile(file)
+                                        setOpenFiles([ ...new Set([ ...openFiles, file ]) ])
+                                    }}
+                                    className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-300 w-full">
+                                    <p
+                                        className='font-semibold text-lg'
+                                    >{file}</p>
+                                </button>))
+
+                        }
                     </div>
 
                 </div>
@@ -305,15 +283,18 @@ const Project = () => {
                     <div className="top flex justify-between w-full">
 
                         <div className="files flex">
-                        {openFiles.map((file, index) => (
-    <button
-        key={`open-${file}`}
-        onClick={() => setCurrentFile(file)}
-        className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${currentFile === file ? 'bg-slate-400' : ''}`}
-    >
-        <p className='font-semibold text-lg'>{file}</p>
-    </button>
-))}
+                            {
+                                openFiles.map((file, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setCurrentFile(file)}
+                                        className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${currentFile === file ? 'bg-slate-400' : ''}`}>
+                                        <p
+                                            className='font-semibold text-lg'
+                                        >{file}</p>
+                                    </button>
+                                ))
+                            }
                         </div>
 
                         <div className="actions flex gap-2">
@@ -422,18 +403,14 @@ const Project = () => {
                             </button>
                         </header>
                         <div className="users-list flex flex-col gap-2 mb-16 max-h-96 overflow-auto">
-                        {users.map(user => (
-    <div 
-        key={`user-${user._id || Math.random()}`} 
-        className={`user cursor-pointer hover:bg-slate-200 ${Array.from(selectedUserId).indexOf(user._id) != -1 ? 'bg-slate-200' : ""} p-2 flex gap-2 items-center`} 
-        onClick={() => handleUserClick(user._id)}
-    >
-        <div className='aspect-square relative rounded-full w-fit h-fit flex items-center justify-center p-5 text-white bg-slate-600'>
-            <i className="ri-user-fill absolute"></i>
-        </div>
-        <h1 className='font-semibold text-lg'>{user.email}</h1>
-    </div>
-))}
+                            {users.map(user => (
+                                <div key={user.id} className={`user cursor-pointer hover:bg-slate-200 ${Array.from(selectedUserId).indexOf(user._id) != -1 ? 'bg-slate-200' : ""} p-2 flex gap-2 items-center`} onClick={() => handleUserClick(user._id)}>
+                                    <div className='aspect-square relative rounded-full w-fit h-fit flex items-center justify-center p-5 text-white bg-slate-600'>
+                                        <i className="ri-user-fill absolute"></i>
+                                    </div>
+                                    <h1 className='font-semibold text-lg'>{user.email}</h1>
+                                </div>
+                            ))}
                         </div>
                         <button
                             onClick={addCollaborators}
