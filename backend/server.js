@@ -11,7 +11,6 @@ const port = process.env.PORT || 4000;
 
 const server = http.createServer(app);
 
-
 const io = new Server(server, {
     cors: {
         origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -19,7 +18,6 @@ const io = new Server(server, {
         credentials: true
     }
 });
-
 
 io.use(async (socket, next) => {
     try {
@@ -61,7 +59,6 @@ io.use(async (socket, next) => {
     }
 });
 
-
 io.on('connection', socket => {
     try {
         socket.roomId = socket.project._id.toString();
@@ -74,13 +71,12 @@ io.on('connection', socket => {
                 const message = data.message;
                 const aiIsPresentInMessage = message.includes('@ai');
 
-
                 if (!aiIsPresentInMessage) {
                     socket.broadcast.to(socket.roomId).emit('project-message', data);
                     return;
                 }
 
-
+                // Handle AI messages
                 try {
                     const prompt = message.replace('@ai', '').trim();
                     if (!prompt) {
@@ -91,6 +87,7 @@ io.on('connection', socket => {
                     const result = await generateResult(prompt);
                     console.log('AI response generated:', result);
                     
+
                     io.to(socket.roomId).emit('project-message', {
                         message: result,
                         sender: {
@@ -101,7 +98,6 @@ io.on('connection', socket => {
                 } catch (aiError) {
                     console.error('AI generation error:', aiError);
                     
-
                     let errorMessage = 'Sorry, I encountered an error processing your request.';
                     
                     if (aiError.message.includes('API key') || aiError.message.includes('model access')) {
@@ -114,8 +110,7 @@ io.on('connection', socket => {
                         errorMessage = 'Too many requests. Please wait a moment and try again.';
                     }
                     
-
-        socket.emit('project-message', {
+                    socket.emit('project-message', {
                         message: { text: errorMessage },
                         sender: {
                             _id: 'ai',
@@ -140,7 +135,7 @@ io.on('connection', socket => {
         });
     } catch (error) {
         console.error('Connection handling error:', error);
-               socket.disconnect(true);
+        socket.disconnect(true);
     }
 });
 
@@ -149,7 +144,6 @@ server.on('error', (error) => {
     console.error('Server error:', error);
 });
 console.log("GOOGLE_AI_KEY:", process.env.GOOGLE_AI_KEY ? "Loaded" : "Not Loaded");
-
 
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
