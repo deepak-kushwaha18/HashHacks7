@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { query } from 'express-validator';
 import * as aiController from '../controllers/ai.controller.js';
 import * as authMiddleware from '../middleware/auth.middleware.js';
-
 const router = Router();
+
+// Validate and get AI result
 router.get('/get-result',
     authMiddleware.authUser,
     [
@@ -18,4 +19,5 @@ router.get('/get-result',
     ],
     aiController.getResult
 );
+
 export default router;
